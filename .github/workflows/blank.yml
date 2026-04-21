@@ -5,6 +5,9 @@ on:
     - cron: '0 3 * * *'  # каждый день в 3:00 UTC
   workflow_dispatch:      # или вручную
  
+permissions:
+  contents: write  # нужно для создания релизов и тегов
+ 
 jobs:
   merge-domains:
     runs-on: ubuntu-latest
@@ -59,4 +62,3 @@ jobs:
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
- 
