@@ -1,0 +1,62 @@
+name: Merge Domain Files
+ 
+on:
+  schedule:
+    - cron: '0 3 * * *'  # каждый день в 3:00 UTC
+  workflow_dispatch:      # или вручную
+ 
+jobs:
+  merge-domains:
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: Checkout target repo (RussianApplicationDomains)
+        uses: actions/checkout@v4
+        with:
+          repository: Zer0Code404/RussianApplicationDomains
+          path: source-repo
+ 
+      - name: Merge domain files
+        run: |
+          OUTPUT_FILE="domains.txt"
+          FILES_DIR="source-repo/files"
+ 
+          > "$OUTPUT_FILE"
+ 
+          for filepath in "$FILES_DIR"/*; do
+            [ -f "$filepath" ] || continue
+ 
+            filename=$(basename "$filepath")
+            echo "# $filename" >> "$OUTPUT_FILE"
+ 
+            while IFS= read -r line || [ -n "$line" ]; do
+              [[ -z "$line" || "$line" == \#* ]] && continue
+              line=$(echo "$line" | xargs)
+              [ -z "$line" ] && continue
+              echo "DOMAIN-KEYWORD,${line},DIRECT" >> "$OUTPUT_FILE"
+            done < "$filepath"
+ 
+            echo "" >> "$OUTPUT_FILE"
+          done
+ 
+          echo "✅ Готово. Строк: $(wc -l < "$OUTPUT_FILE")"
+ 
+      - name: Delete existing latest release
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+ 
+      - name: Create new latest release with file
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Latest domains #${{ github.run_number }}"
+          body: |
+            Автоматически собранный файл доменов.
+            Обновлено при запуске №${{ github.run_number }}
+          files: domains.txt
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+ 
