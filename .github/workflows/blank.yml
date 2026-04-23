@@ -1,64 +1,123 @@
 name: Merge Domain Files
- 
+
 on:
   schedule:
     - cron: '0 3 * * *'  # каждый день в 3:00 UTC
   workflow_dispatch:      # или вручную
- 
+
 permissions:
-  contents: write  # нужно для создания релизов и тегов
- 
+  contents: write
+
 jobs:
   merge-domains:
     runs-on: ubuntu-latest
- 
+
     steps:
-      - name: Checkout target repo (RussianApplicationDomains)
+      - name: Checkout own repo (для локальных файлов)
+        uses: actions/checkout@v4
+        with:
+          path: own-repo
+
+      - name: Checkout RussianApplicationDomains
         uses: actions/checkout@v4
         with:
           repository: Zer0Code404/RussianApplicationDomains
-          path: source-repo
- 
-      - name: Merge domain files
+          path: ruapps-repo
+
+      - name: Build ruapps.txt (из папки files/)
         run: |
-          OUTPUT_FILE="domains.txt"
-          FILES_DIR="source-repo/files"
- 
-          > "$OUTPUT_FILE"
- 
+          OUTPUT="ruapps.txt"
+          FILES_DIR="ruapps-repo/files"
+
+          > "$OUTPUT"
+
           for filepath in "$FILES_DIR"/*; do
             [ -f "$filepath" ] || continue
- 
             filename=$(basename "$filepath")
-            echo "# $filename" >> "$OUTPUT_FILE"
- 
+            echo "# $filename" >> "$OUTPUT"
+
             while IFS= read -r line || [ -n "$line" ]; do
               [[ -z "$line" || "$line" == \#* ]] && continue
               line=$(echo "$line" | xargs)
               [ -z "$line" ] && continue
-              echo "DOMAIN-KEYWORD,${line},DIRECT" >> "$OUTPUT_FILE"
+              echo "DOMAIN-KEYWORD,${line}" >> "$OUTPUT"
             done < "$filepath"
- 
-            echo "" >> "$OUTPUT_FILE"
+
+            echo "" >> "$OUTPUT"
           done
- 
-          echo "✅ Готово. Строк: $(wc -l < "$OUTPUT_FILE")"
- 
+
+          echo "✅ ruapps.txt — строк: $(wc -l < "$OUTPUT")"
+
+      - name: Build direct_domain.txt
+        run: |
+          OUTPUT="direct_domain.txt"
+          SRC="own-repo/direct_domain"
+
+          > "$OUTPUT"
+          echo "# direct_domain" >> "$OUTPUT"
+
+          while IFS= read -r line || [ -n "$line" ]; do
+            [[ -z "$line" || "$line" == \#* ]] && continue
+            line=$(echo "$line" | xargs)
+            [ -z "$line" ] && continue
+            echo "DOMAIN-KEYWORD,${line}" >> "$OUTPUT"
+          done < "$SRC"
+
+          echo "✅ direct_domain.txt — строк: $(wc -l < "$OUTPUT")"
+
+      - name: Build direct_ipcidr.txt
+        run: |
+          OUTPUT="direct_ipcidr.txt"
+          SRC="own-repo/direct_ipcidr"
+
+          > "$OUTPUT"
+          echo "# direct_ipcidr" >> "$OUTPUT"
+
+          while IFS= read -r line || [ -n "$line" ]; do
+            [[ -z "$line" || "$line" == \#* ]] && continue
+            line=$(echo "$line" | xargs)
+            [ -z "$line" ] && continue
+            echo "DOMAIN-KEYWORD,${line}" >> "$OUTPUT"
+          done < "$SRC"
+
+          echo "✅ direct_ipcidr.txt — строк: $(wc -l < "$OUTPUT")"
+
+      - name: Build proxy_domain.txt
+        run: |
+          OUTPUT="proxy_domain.txt"
+          SRC="own-repo/proxy_domain"
+
+          > "$OUTPUT"
+          echo "# proxy_domain" >> "$OUTPUT"
+
+          while IFS= read -r line || [ -n "$line" ]; do
+            [[ -z "$line" || "$line" == \#* ]] && continue
+            line=$(echo "$line" | xargs)
+            [ -z "$line" ] && continue
+            echo "DOMAIN-KEYWORD,${line}" >> "$OUTPUT"
+          done < "$SRC"
+
+          echo "✅ proxy_domain.txt — строк: $(wc -l < "$OUTPUT")"
+
       - name: Delete existing latest release
         run: |
           gh release delete latest --yes --cleanup-tag || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
- 
-      - name: Create new latest release with file
+
+      - name: Create new latest release with all files
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           name: "Latest domains #${{ github.run_number }}"
           body: |
-            Автоматически собранный файл доменов.
+            Автоматически собранные файлы доменов.
             Обновлено при запуске №${{ github.run_number }}
-          files: domains.txt
+          files: |
+            ruapps.txt
+            direct_domain.txt
+            direct_ipcidr.txt
+            proxy_domain.txt
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
