@@ -27,26 +27,30 @@ jobs:
       - name: Build ruapps.txt (из папки files/)
         run: |
           OUTPUT="ruapps.txt"
+          OUTPUT_CLEAR="ruappsclear.txt"
           FILES_DIR="ruapps-repo/files"
-
+ 
           > "$OUTPUT"
-
+          > "$OUTPUT_CLEAR"
+ 
           for filepath in "$FILES_DIR"/*; do
             [ -f "$filepath" ] || continue
             filename=$(basename "$filepath")
             echo "# $filename" >> "$OUTPUT"
-
+ 
             while IFS= read -r line || [ -n "$line" ]; do
               [[ -z "$line" || "$line" == \#* ]] && continue
               line=$(echo "$line" | xargs)
               [ -z "$line" ] && continue
               echo "DOMAIN-KEYWORD,${line}" >> "$OUTPUT"
+              echo "${line}" >> "$OUTPUT_CLEAR"
             done < "$filepath"
-
+ 
             echo "" >> "$OUTPUT"
           done
-
+ 
           echo "✅ ruapps.txt — строк: $(wc -l < "$OUTPUT")"
+          echo "✅ ruappsclear.txt — строк: $(wc -l < "$OUTPUT_CLEAR")"
 
       - name: Build direct_domain.txt
         run: |
