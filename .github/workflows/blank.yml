@@ -119,6 +119,7 @@ jobs:
             Обновлено при запуске №${{ github.run_number }}
           files: |
             ruapps.txt
+            ruappsclear.txt
             direct_domain.txt
             direct_ipcidr.txt
             proxy_domain.txt
